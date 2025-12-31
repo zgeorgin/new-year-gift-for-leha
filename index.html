@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>НГ-головоломка: Turing Complete</title>
+  <style>
+    :root{
+      --bg:#070b10; --panel:#0e1622; --panel2:#0b1220;
+      --text:#d7e2f0; --muted:#9fb2cc; --good:#43f58a; --bad:#ff5e7a;
+      --accent:#7aa2ff; --border:#1e2c44;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:radial-gradient(1200px 600px at 30% -10%, #0e1a33 0, rgba(7,11,16,0) 60%),
+                 radial-gradient(900px 500px at 90% 10%, #121f3c 0, rgba(7,11,16,0) 55%),
+                 var(--bg);
+      color:var(--text); font:16px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      min-height:100vh;
+    }
+    a{color:var(--accent)}
+    .wrap{max-width:920px; margin:0 auto; padding:24px}
+    .header{
+      display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    .title{
+      margin:0; font-size:20px; letter-spacing:.2px
+    }
+    .subtitle{margin:6px 0 0; color:var(--muted); font-size:13px; max-width:70ch}
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    .topbar{
+      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .progress{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap; color:var(--muted); font-size:12px;
+    }
+    .pill{
+      padding:4px 10px; border-radius:999px; border:1px solid var(--border);
+      background:rgba(122,162,255,0.08);
+      color:var(--text);
+    }
+    .grid{
+      display:grid; grid-template-columns:1fr; gap:14px;
+    }
+    @media (min-width: 760px){
+      .grid{grid-template-columns:1.15fr .85fr}
+    }
+    .card{
+      background:rgba(255,255,255,0.02);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+    }
+    h2{margin:0 0 10px; font-size:16px}
+    p{margin:8px 0}
+    .muted{color:var(--muted)}
+    .kbd{
+      display:inline-block; padding:2px 8px; border-radius:8px;
+      background:rgba(255,255,255,0.04); border:1px solid var(--border);
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    input[type="text"]{
+      width:min(520px, 100%);
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:var(--panel2);
+      color:var(--text);
+      outline:none;
+    }
+    input[type="text"]:focus{border-color:rgba(122,162,255,.8); box-shadow:0 0 0 3px rgba(122,162,255,.15)}
+    button{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(122,162,255,0.10);
+      color:var(--text);
+      cursor:pointer;
+    }
+    button:hover{background:rgba(122,162,255,0.18)}
+    button:disabled{opacity:.5; cursor:not-allowed}
+    .status{min-height:20px; font-size:12px; margin-top:6px}
+    .ok{color:var(--good)}
+    .err{color:var(--bad)}
+    .diagram{
+      width:100%;
+      border:1px dashed rgba(122,162,255,.25);
+      border-radius:12px;
+      padding:12px;
+      background:rgba(0,0,0,.18);
+      overflow:auto;
+    }
+    pre{margin:0; white-space:pre; color:var(--text)}
+    .bits{
+      display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;
+    }
+    .bit{
+      padding:4px 8px; border-radius:10px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,0.03);
+      font-size:12px;
+    }
+    .footer{
+      margin-top:16px; color:var(--muted); font-size:12px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .reveal{
+      display:none;
+      margin-top:12px;
+      padding:14px;
+      border-radius:14px;
+      border:1px solid rgba(67,245,138,.35);
+      background:rgba(67,245,138,.06);
+    }
+    .key{
+      font-size:18px;
+      letter-spacing:2px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(67,245,138,.35);
+      background:rgba(0,0,0,.18);
+      display:inline-block;
+    }
+    .small{font-size:11px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1 class="title">🎄 Лаборатория логики — доступ к подарку</h1>
+        <p class="subtitle">
+          Чтобы получить ключ, нужно пройти маленький «учебный» путь: логика → двоичное → регистры → порядок команд.
+          (Подсказка: в <span class="kbd">Turing Complete</span> всё ровно так и устроено.)
+        </p>
+      </div>
+      <div class="progress">
+        <span class="pill">Шаг <span id="stepNum">1</span>/4</span>
+        <span class="pill">Фрагменты: <span id="fragCount">0</span>/3</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <!-- STEP 1 -->
+      <section class="step" id="step1">
+        <div class="grid">
+          <div class="card">
+            <h2>Шаг 1 — Логические вентили</h2>
+            <p class="muted">Вычисли выход схемы. Ответ — <span class="kbd">0</span> или <span class="kbd">1</span>.</p>
+
+            <div class="diagram" aria-label="Логическая схема">
+<pre>
+Дано: A=1, B=0
+
+          ┌───────────┐
+A ───────▶│   AND     │───┐
+B ───────▶│ (A AND B) │   │
+          └───────────┘   │
+                          ▼
+                      ┌───────┐
+B ───────┐            │  OR   │────▶ OUT
+         ▼            └───────┘
+     ┌──────┐             🠉
+     │ NOT  │-------------|
+     └──────┘
+</pre>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <input id="a1" type="text" inputmode="numeric" placeholder="OUT = ?" autocomplete="off" />
+              <button id="b1">Проверить</button>
+            </div>
+            <div class="status" id="s1"></div>
+          </div>
+
+          <div class="card">
+            <h2>Заметки</h2>
+            <p>Формула этой схемы:</p>
+            <p class="kbd">(A AND B) OR (NOT B)</p>
+            <p class="muted small">
+              Если всё верно — получишь 1-й фрагмент ключа.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" id="step2" style="display:none">
+        <div class="grid">
+          <div class="card">
+            <h2>Шаг 2 — Двоичное → ASCII</h2>
+            <p class="muted">Преобразуй байт в символ (ASCII). Введи <b>букву</b>.</p>
+
+            <div class="diagram">
+              <p style="margin:0 0 8px" class="muted">Байт:</p>
+              <div class="bits" id="byteChips"></div>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <input id="a2" type="text" placeholder="Символ = ?" maxlength="1" autocomplete="off" />
+              <button id="b2">Проверить</button>
+            </div>
+            <div class="status" id="s2"></div>
+          </div>
+
+          <div class="card">
+            <h2>Подсказка</h2>
+            <p class="muted">
+              Двоичное число → десятичное → таблица ASCII.
+              Это один символ.
+            </p>
+            <p class="muted small">
+              (Если не хочешь гуглить ASCII: 65 = 'A', 66 = 'B', 67 = 'C' …)
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" id="step3" style="display:none">
+        <div class="grid">
+          <div class="card">
+            <h2>Шаг 3 — Регистры</h2>
+            <p class="muted">Проследи выполнение инструкций. Ответ — число.</p>
+
+            <div class="diagram">
+<pre id="asmBox"></pre>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <input id="a3" type="text" inputmode="numeric" placeholder="Значение R1 = ?" autocomplete="off" />
+              <button id="b3">Проверить</button>
+            </div>
+            <div class="status" id="s3"></div>
+          </div>
+
+          <div class="card">
+            <h2>Условие</h2>
+            <p class="muted">
+              <span class="kbd">ADD R1, R2</span> означает <span class="kbd">R1 = R1 + R2</span><br/>
+              <span class="kbd">XOR R1, k</span> означает побитовое XOR с числом <span class="kbd">k</span> (можно посчитать в двоичном).
+            </p>
+            <p class="muted small">
+              Если всё верно — получишь 3-й фрагмент ключа.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="step" id="step4" style="display:none">
+        <div class="grid">
+          <div class="card">
+            <h2>Шаг 4 — Порядок выполнения</h2>
+            <p class="muted">
+              Финальный штрих: впиши порядок стадий цикла команды процессора, разделяя дефисами.
+              Пример формата: <span class="kbd">A-B-C-D</span>
+            </p>
+            <div class="diagram">
+<pre>
+Стадии:
+1) Decode
+2) Fetch
+3) Execute
+4) Store
+
+Введи правильный порядок:
+(Подсказка: классика CPU)
+</pre>
+            </div>
+
+            <div class="row" style="margin-top:10px">
+              <input id="a4" type="text" placeholder="Напр.: Fetch-Decode-..." autocomplete="off" />
+              <button id="b4">Проверить</button>
+            </div>
+            <div class="status" id="s4"></div>
+
+            <div class="reveal" id="revealBox">
+              <p style="margin:0 0 8px">✅ Доступ открыт. Твой ключ:</p>
+              <div class="key" id="finalKey">XXXXX-XXXXX-XXXXX</div>
+              <p class="muted small" style="margin:8px 0 0">
+                С Новым годом! 🎉
+              </p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Собранные фрагменты</h2>
+            <p class="muted">Они склеятся в ключ автоматически, когда пройдёшь финальный шаг.</p>
+            <div class="diagram">
+              <pre id="fragBox">(пока пусто)</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer">
+        <div>🧠 Совет: если застрял — думай как схемы: простые шаги, чёткие состояния.</div>
+        <div class="muted">Локально работает офлайн. Просто открой этот файл в браузере.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // НАСТРОЙКИ (ПОМЕНЯЙ ПОД СЕБЯ)
+    // =========================
+
+    // ВАЖНО: это ДЕМО-ключ. ЗАМЕНИ на свой реальный ключ Steam.
+    const STEAM_KEY = "ABCD1-EFGH2-IJKL3";
+
+    // Три фрагмента, которые будут выданы за шаги 1–3.
+    // По умолчанию они берутся из ключа автоматически (удобно).
+    const FRAGMENTS = (() => {
+      const clean = STEAM_KEY.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+      // 15 символов у Steam ключа без дефисов. Разобьём на 3 фрагмента по 5.
+      return [clean.slice(0,5), clean.slice(5,10), clean.slice(10,15)];
+    })();
+
+    // =========================
+    // ВСПОМОГАТЕЛЬНОЕ
+    // =========================
+    const $ = (id) => document.getElementById(id);
+
+    const state = {
+      step: 1,
+      fragments: []
+    };
+
+    function setStep(n){
+      state.step = n;
+      for (let i=1;i<=4;i++){
+        $("step"+i).style.display = (i===n) ? "block" : "none";
+      }
+      $("stepNum").textContent = String(n);
+      $("fragCount").textContent = String(state.fragments.length);
+      updateFragBox();
+      // заполнения UI для конкретных шагов
+      if (n === 2) renderByteChips(BYTE_PUZZLE.byte);
+      if (n === 3) $("asmBox").textContent = REG_PUZZLE.programText;
+    }
+
+    function normalize(s){
+      return String(s ?? "").trim();
+    }
+
+    function ok(el, msg){
+      el.className = "status ok";
+      el.textContent = msg;
+    }
+
+    function err(el, msg){
+      el.className = "status err";
+      el.textContent = msg;
+    }
+
+    function addFragment(idx){
+      const frag = FRAGMENTS[idx];
+      if (!state.fragments.includes(frag)) state.fragments.push(frag);
+      $("fragCount").textContent = String(state.fragments.length);
+      updateFragBox();
+    }
+
+    function updateFragBox(){
+      $("fragBox").textContent = state.fragments.length
+        ? state.fragments.map((f,i)=>`[${i+1}] ${f}`).join("\n")
+        : "(пока пусто)";
+    }
+
+    function showKey(){
+      $("finalKey").textContent = STEAM_KEY.toUpperCase();
+      $("revealBox").style.display = "block";
+    }
+
+    // =========================
+    // ШАГ 1: логика
+    // OUT = (A AND B) OR (NOT B) при A=1, B=0 => 1
+    // =========================
+    const ANSWER1 = "1";
+
+    $("b1").addEventListener("click", () => {
+      const v = normalize($("a1").value);
+      if (v === ANSWER1){
+        ok($("s1"), `Верно! Фрагмент #1: ${FRAGMENTS[0]}`);
+        addFragment(0);
+        $("b1").disabled = true;
+        setTimeout(()=>setStep(2), 600);
+      } else {
+        err($("s1"), "Не совсем. Проверь AND и NOT для B=0.");
+      }
+    });
+
+    $("a1").addEventListener("keydown", (e)=>{ if (e.key==="Enter") $("b1").click(); });
+
+    // =========================
+    // ШАГ 2: двоичное -> ASCII
+    // =========================
+    // Сгенерируем байт так, чтобы он был буквой (A-Z) — по умолчанию это 'K' (75) => 01001011
+    const BYTE_PUZZLE = {
+      byte: "01001011",
+      answerChar: "K"
+    };
+
+    function renderByteChips(byteStr){
+      const box = $("byteChips");
+      box.innerHTML = "";
+      for (const ch of byteStr){
+        const span = document.createElement("span");
+        span.className = "bit";
+        span.textContent = ch;
+        box.appendChild(span);
+      }
+    }
+
+    $("b2").addEventListener("click", () => {
+      const v = normalize($("a2").value).toUpperCase();
+      if (v === BYTE_PUZZLE.answerChar){
+        ok($("s2"), `Верно! Фрагмент #2: ${FRAGMENTS[1]}`);
+        addFragment(1);
+        $("b2").disabled = true;
+        setTimeout(()=>setStep(3), 600);
+      } else {
+        err($("s2"), "Почти. Это один ASCII-символ (проверь десятичное значение).");
+      }
+    });
+
+    $("a2").addEventListener("keydown", (e)=>{ if (e.key==="Enter") $("b2").click(); });
+
+    // =========================
+    // ШАГ 3: регистры
+    // =========================
+    // Сделаем программу фиксированной и понятной.
+    // R1=12, R2=5
+    // ADD => 17
+    // XOR R1, 9 => 17 XOR 9 = 24 (10001 xor 01001 = 11000)
+    const REG_PUZZLE = {
+      answerR1: 24,
+      programText:
+`Дано:
+R1 = 12
+R2 = 5
+
+Инструкции:
+ADD R1, R2
+XOR R1, 9
+
+Вопрос: чему равно R1 в конце?`
+    };
+
+    $("b3").addEventListener("click", () => {
+      const v = normalize($("a3").value);
+      const n = Number(v);
+      if (Number.isFinite(n) && n === REG_PUZZLE.answerR1){
+        ok($("s3"), `Верно! Фрагмент #3: ${FRAGMENTS[2]}`);
+        addFragment(2);
+        $("b3").disabled = true;
+        setTimeout(()=>setStep(4), 600);
+      } else {
+        err($("s3"), "Не сходится. Сначала ADD, потом XOR (удобно посчитать в двоичном).");
+      }
+    });
+
+    $("a3").addEventListener("keydown", (e)=>{ if (e.key==="Enter") $("b3").click(); });
+
+    // =========================
+    // ШАГ 4: порядок стадий
+    // Fetch → Decode → Execute → Store
+    // =========================
+    const ANSWER4 = "FETCH-DECODE-EXECUTE-STORE";
+
+    $("b4").addEventListener("click", () => {
+      const v = normalize($("a4").value).toUpperCase().replace(/\s+/g,"");
+      if (v === ANSWER4){
+        ok($("s4"), "Идеально. Система разблокирована ✅");
+        $("b4").disabled = true;
+        showKey();
+      } else {
+        err($("s4"), "Порядок не тот. Подсказка: сначала извлечь, потом разобрать, затем выполнить, потом сохранить.");
+      }
+    });
+
+    $("a4").addEventListener("keydown", (e)=>{ if (e.key==="Enter") $("b4").click(); });
+
+    // старт
+    setStep(1);
+  </script>
+</body>
+</html>
